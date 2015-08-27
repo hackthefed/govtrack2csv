@@ -1,0 +1,8 @@
+*.pyc
+env
+govtrack2csv.egg-info
+build
+dist
+atlassian-ide-plugin.xml
+govtrack2csv.iml
+.idea
