@@ -143,7 +143,7 @@ def save_congress(congress, dest):
     except Exception:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(exc_type, fname, exc_tb.tb_lineno)
+        logger.error(exc_type, fname, exc_tb.tb_lineno)
 
 
 def import_committee_membership(src):
@@ -330,17 +330,17 @@ def convert_congress(congress):
     legislation = []
 
     # Relationships
-    #bills_per_congress = []
+    # bills_per_congress = []
     sponsors = []
     cosponsors = []
     committees = []
-    #ammendments = []
+    # ammendments = []
     subjects = []
-    #titles = []
-    #events = []
+    # titles = []
+    # events = []
 
     # Change Log
-    #actions = pd.DataFrame()
+    # actions = pd.DataFrame()
 
     bills = "{0}/{1}/bills".format(congress['src'], congress['congress'])
     logger.info("About to walk {0}".format(bills))
@@ -360,7 +360,7 @@ def convert_congress(congress):
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                logger.debug(exc_type, fname, exc_tb.tb_lineno)
+                logger.error(exc_type, fname, exc_tb.tb_lineno)
 
             try:
                 sponsor = extract_sponsor(bill)
@@ -369,7 +369,7 @@ def convert_congress(congress):
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                logger.debug(exc_type, fname, exc_tb.tb_lineno)
+                logger.error(exc_type, fname, exc_tb.tb_lineno)
 
             try:
                 cosponsor = extract_cosponsors(bill)
@@ -378,24 +378,19 @@ def convert_congress(congress):
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                logger.debug(exc_type, fname, exc_tb.tb_lineno)
+                logger.error(exc_type, fname, exc_tb.tb_lineno)
 
             try:
                 subject = extract_subjects(bill)
                 subjects.extend(subject)
-                logger.debug("subject")
-
-                # evts = extract_events(bill)
-                # events.append(evts)
 
                 committee = extract_committees(bill)
                 committees.extend(committee)
-                logger.debug("subject")
 
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                logger.debug(exc_type, fname, exc_tb.tb_lineno)
+                logger.error(exc_type, fname, exc_tb.tb_lineno)
 
     try:
 
@@ -406,28 +401,23 @@ def convert_congress(congress):
             'congress', 'bill_id', 'bill_type', 'enacted_as', 'active', 'active_at',
             'awaiting_signature', 'enacted', 'vetoed', 'introduced_at', 'number',
             'official_title', 'popular_title', 'short_title', 'status', 'status_at',
-            'top_subject', 'updated_at'
-        ]
+            'top_subject', 'updated_at']
 
         congress_obj.sponsors = pd.DataFrame(sponsors)
         congress_obj.sponsors.columns = [
-            'type', 'thomas_id', 'bill_id', 'district', 'state'
-        ]
+            'type', 'thomas_id', 'bill_id', 'district', 'state']
 
         congress_obj.cosponsors = pd.DataFrame(cosponsors)
         congress_obj.sponsors.columns = [
-            'type', 'thomas_id', 'bill_id', 'district', 'state'
-        ]
+            'type', 'thomas_id', 'bill_id', 'district', 'state']
 
         congress_obj.committees = pd.DataFrame(committees)
         congress_obj.committees.columns = [
-            'type', 'name', 'committee_id', 'bill_id'
-        ]
+            'type', 'name', 'committee_id', 'bill_id']
 
         congress_obj.subjects = pd.DataFrame(subjects)
         congress_obj.subjects.columns = [
-            'bill_id', 'bill_type', 'subject'
-        ]
+            'bill_id', 'bill_type', 'subject']
 
         # congress_obj.events = pd.DataFrame(events)
         save_congress(congress_obj, congress['dest'])
