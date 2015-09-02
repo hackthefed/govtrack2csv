@@ -64,9 +64,9 @@ if __name__ == '__main__':
             {
                 "congress": c,
                 "src": args.source,
-                "dest": args.destination
-             }
-            for c in os.walk(args.source).next()[1]]
+                "dest": args.destination }
+             for c in os.listdir(args.source)
+             if os.path.isdir(os.path.join(args.source, c))]
     logger.info(dirs)
 
     p = Pool(args.threads)
