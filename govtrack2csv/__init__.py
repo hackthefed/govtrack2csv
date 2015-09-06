@@ -179,12 +179,6 @@ def extract_legislation(bill):
     record.append(bill.get('congress', None))
     record.append(bill.get('bill_id', None))
     record.append(bill.get('bill_type', None))
-    record.append(bill.get('enacted_as', None))
-    record.append(bill.get('active', None))
-    record.append(bill.get('active_at', None))
-    record.append(bill.get('awaiting_signature', None))
-    record.append(bill.get('enacted', None))
-    record.append(bill.get('vetoed', None))
     record.append(bill.get('introduced_at', None))
     record.append(bill.get('number', None))
     record.append(bill.get('official_title', None))
@@ -398,8 +392,7 @@ def convert_congress(congress):
 
         congress_obj.legislation = pd.DataFrame(legislation)
         congress_obj.legislation.columns = [
-            'congress', 'bill_id', 'bill_type', 'enacted_as', 'active', 'active_at',
-            'awaiting_signature', 'enacted', 'vetoed', 'introduced_at', 'number',
+            'congress', 'bill_id', 'bill_type', 'introduced_at', 'number',
             'official_title', 'popular_title', 'short_title', 'status', 'status_at',
             'top_subject', 'updated_at']
 
