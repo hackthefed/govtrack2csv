@@ -140,6 +140,7 @@ def save_congress(congress, dest):
         congress.events.to_csv("{0}/events.csv".format(congress_dir), encoding='utf-8')
         congress.committees.to_csv("{0}/committees_map.csv".format(congress_dir), encoding='utf-8')
         congress.subjects.to_csv("{0}/subjects_map.csv".format(congress_dir), encoding='utf-8')
+        congress.ammendments.to_csv("{0}/ammendments.csv".format(congress_dir), encoding='utf-8')
     except Exception:
         logger.info("############################################shoot me")
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -316,6 +317,15 @@ def extract_events(bill):
     return events
 
 
+def extract_ammendments(bill):
+    """
+    While there is an ammendments field in data.json it doesn't actually contain
+    anything so this is just here to remind you of that. Ammendments are
+    in a <congress_num>/amendments
+    """
+    pass
+
+
 def convert_congress(congress):
     """
     Recurse the passed govtrack congress directory and convert it's contents
@@ -341,7 +351,7 @@ def convert_congress(congress):
     sponsors = []
     cosponsors = []
     committees = []
-    # ammendments = []
+    ammendments = []
     subjects = []
     # titles = []
     events = []
@@ -364,30 +374,15 @@ def convert_congress(congress):
             try:
                 record = extract_legislation(bill)
                 legislation.append(record)
-            except Exception as e:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                logger.error(exc_type, fname, exc_tb.tb_lineno)
 
-            try:
                 sponsor = extract_sponsor(bill)
                 sponsors.append(sponsor)
                 logger.debug("sponsor")
-            except Exception as e:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                logger.error(exc_type, fname, exc_tb.tb_lineno)
 
-            try:
                 cosponsor = extract_cosponsors(bill)
                 cosponsors.extend(cosponsor)
                 logger.debug("co-sponsor")
-            except Exception as e:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                logger.error(exc_type, fname, exc_tb.tb_lineno)
 
-            try:
                 subject = extract_subjects(bill)
                 subjects.extend(subject)
 
@@ -396,6 +391,9 @@ def convert_congress(congress):
 
                 evt = extract_events(bill)
                 events.extend(evt)
+
+                ammend = extract_ammendments(bill)
+                ammendments.extend(ammend)
 
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -432,6 +430,9 @@ def convert_congress(congress):
         congress_obj.events.columns = [
             'bill_id', 'acted_at', 'how', 'result', 'roll', 'status', 'suspension', 'text',
             'type', 'vote_type', 'where', 'calander', 'number', 'under', 'committee', 'committees']
+
+        congress_obj.ammendments = pd.DataFrame(ammendments)
+        congress_obj.ammendments.columns = ['ammendments']
 
         save_congress(congress_obj, congress['dest'])
     except Exception as e:
