@@ -385,9 +385,18 @@ def process_amendments(congress):
 
             amendment.append(a['amendment_id'])
             amendment.append(a['amendment_type'])
-            amendment.append(a['amends_amendment'].get('amendment_id', None))
-            amendment.append(a['amends_bill'].get('bill_id', None))
-            amendment.append(a['amends_treaty'])
+            if a['amends_amendment']:
+                amendment.append(a['amends_amendment'].get('amendment_id', None))
+            else:
+                amendment.append(None)
+            if a['amends_bill']:
+                amendment.append(a['amends_bill'].get('bill_id', None))
+            else:
+                amendment.append(None)
+            if a['amends_treaty']:
+                amendment.append(a['amends_treaty'].get('treaty_id', None))
+            else:
+                amendment.append(None)
             amendment.append(a['chamber'])
             amendment.append(a['congress'])
             amendment.append(a['description'])
