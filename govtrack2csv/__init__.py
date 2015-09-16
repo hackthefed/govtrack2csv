@@ -141,7 +141,7 @@ def save_congress(congress, dest):
         congress.events.to_csv("{0}/events.csv".format(congress_dir), encoding='utf-8')
         congress.committees.to_csv("{0}/committees_map.csv".format(congress_dir), encoding='utf-8')
         congress.subjects.to_csv("{0}/subjects_map.csv".format(congress_dir), encoding='utf-8')
-        congress.ammendments.to_csv("{0}/ammendments.csv".format(congress_dir), encoding='utf-8')
+        congress.amendments.to_csv("{0}/amendments.csv".format(congress_dir), encoding='utf-8')
     except Exception:
         logger.info("############################################shoot me")
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -356,60 +356,54 @@ def process_bills(congress):
                 evt = extract_events(bill)
                 data['events'].extend(evt)
 
-
             except Exception:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 logger.error(exc_type, fname, exc_tb.tb_lineno)
+
     return data
 
 
-def process_ammendments(congress):
+def process_amendments(congress):
     """
     Traverse amendments for a project
     """
-    bills = "{0}/{1}/amendments".format(congress['src'], congress['congress'])
-    logger.info("About to walk {0}".format(bills))
+    logger.debug("==================================================================")
+    amend_dir = "{0}/{1}/amendments".format(congress['src'], congress['congress'])
+    logger.debug("==================================================================")
+    logger.info("About to walk {0}".format(amend_dir))
+    logger.debug("==================================================================")
 
-    ammendments = []
+    amendments = []
 
-    for root, dirs, files in os.walk(bills):
+    for root, dirs, files in os.walk(amend_dir):
         if "data.json" in files and "text-versions" not in root:
             file_path = "{0}/data.json".format(root)
             logger.debug("Processing {0}".format(file_path))
             a = json.loads(open(file_path, 'r').read())
-            amendment = {}
+            amendment = []
 
-            amendment['ammendment_id'] = a['amendment_id']
-            amendment['ammendment_type'] = a['amendment_type']
+            amendment.append(a['amendment_id'])
+            amendment.append(a['amendment_type'])
+            amendment.append(a['amends_amendment'].get('amendment_id', None))
+            amendment.append(a['amends_bill'].get('bill_id', None))
+            amendment.append(a['amends_treaty'])
+            amendment.append(a['chamber'])
+            amendment.append(a['congress'])
+            amendment.append(a['description'])
+            amendment.append(a['introduced_at'])
+            amendment.append(a['number'])
+            amendment.append(a.get('proposed_at', None))
+            amendment.append(a['purpose'])
+            amendment.append(a['sponsor'].get('thomas_id', None))
+            amendment.append(a['sponsor'].get('committee_id', None))
+            amendment.append(a['sponsor']['type'])
+            amendment.append(a['status'])
+            amendment.append(a['updated_at'])
 
-            if a['ammends_ammendment']:
-                amendment['amends_amendment'] = a['amends_amendment']['amendment_id']
-            else:
-                amendment['amends_amendment'] = False
+            amendments.append(amendment)
 
-            if a['ammends_bill']:
-                amendment['amends_bill'] = a['amends_bill']['bill_id']
-            else:
-                amendment['amends_bill'] = False
-
-            amendment['amends_treaty'] = a['amends_treaty']
-            amendment['chamber'] = a['chamber']
-            amendment['congress'] = a['congress']
-            amendment['description'] = a['description']
-            amendment['introducted'] = a['introduced_at']
-            amendment['number'] = a['number']
-            amendment['proposed'] = a['proposed_at']
-            amendment['purpose'] = a['purpose']
-            amendment['sponsor_id'] = a['sponsor']['thomas_id']
-            amendment['sponsor_type'] = a['sponsor']['type']
-            amendment['status'] = a['status']
-            amendment['updated'] = a['updated']
-
-
-
-
-
+    return amendments
 
 
 def convert_congress(congress):
@@ -430,7 +424,7 @@ def convert_congress(congress):
     # dataframes is expensive so we don't do  that.
 
     bills = process_bills(congress)
-    ammendments = process_bills(congress_obj)
+    amendments = process_amendments(congress)
 
     try:
 
@@ -439,8 +433,8 @@ def convert_congress(congress):
         congress_obj.legislation = pd.DataFrame(bills['legislation'])
         congress_obj.legislation.columns = [
             'congress', 'bill_id', 'bill_type', 'introduced_at', 'number',
-            'official_title', 'popular_title', 'short_title', 'status', 'status_at',
-            'top_subject', 'updated_at']
+            'official_title', 'popular_title', 'short_title', 'status',
+            'status_at', 'top_subject', 'updated_at']
 
         congress_obj.sponsors = pd.DataFrame(bills['sponsors'])
         congress_obj.sponsors.columns = [
@@ -463,15 +457,20 @@ def convert_congress(congress):
             'bill_id', 'acted_at', 'how', 'result', 'roll', 'status', 'suspension', 'text',
             'type', 'vote_type', 'where', 'calander', 'number', 'under', 'committee', 'committees']
 
-        #congress_obj.ammendments = pd.DataFrame(bills['ammendments'])
-        #congress_obj.ammendments.columns = ['ammendments']
+        congress_obj.amendments = pd.DataFrame(amendments)
+        congress_obj.amendments.columns = [
+            'amendment_id', 'amendment_type', 'amends_amendment', 'amends_bill',
+            'amends_treaty', 'chamber', 'congress', 'description', 'introduced',
+            'number', 'proposed', 'purpose', 'sponsor_id', 'committee_id',
+            'sponsor_type', 'status', 'updated']
 
         save_congress(congress_obj, congress['dest'])
     except Exception as e:
+        logger.debug("################### ERRROR SAVING ########################")
         # print "{0} - {1}".format(congress, len(legislation))
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        logger.debug(e)
-        logger.debug(exc_type)
-        logger.debug(fname)
-        logger.debug(exc_tb.tb_lineno)
+        logger.error(e)
+        logger.error(exc_type)
+        logger.error(fname)
+        logger.error(exc_tb.tb_lineno)
