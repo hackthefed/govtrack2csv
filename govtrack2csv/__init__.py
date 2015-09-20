@@ -141,7 +141,8 @@ def save_congress(congress, dest):
         congress.events.to_csv("{0}/events.csv".format(congress_dir), encoding='utf-8')
         congress.committees.to_csv("{0}/committees_map.csv".format(congress_dir), encoding='utf-8')
         congress.subjects.to_csv("{0}/subjects_map.csv".format(congress_dir), encoding='utf-8')
-        congress.amendments.to_csv("{0}/amendments.csv".format(congress_dir), encoding='utf-8')
+        if hasattr(congress, 'amendments'):
+            congress.amendments.to_csv("{0}/amendments.csv".format(congress_dir), encoding='utf-8')
     except Exception:
         logger.info("############################################shoot me")
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -368,11 +369,8 @@ def process_amendments(congress):
     """
     Traverse amendments for a project
     """
-    logger.debug("==================================================================")
     amend_dir = "{0}/{1}/amendments".format(congress['src'], congress['congress'])
-    logger.debug("==================================================================")
     logger.info("About to walk {0}".format(amend_dir))
-    logger.debug("==================================================================")
 
     amendments = []
 
@@ -415,6 +413,27 @@ def process_amendments(congress):
     return amendments
 
 
+def process_votes(congress):
+    logger.debug("==================================================================")
+    vote_dir = "{0}/{1}/vote".format(congress['src'], congress['congress'])
+    logger.debug("==================================================================")
+    logger.info("About to walk {0}".format(vote_dir))
+    logger.debug("==================================================================")
+
+    votes = []
+
+    for root, dirs, files in os.walk(vote_dir):
+        if "data.json" in files:
+            logger.debug('<<<<<<<<<<<<<<<<<<<<<<=======================================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            file_path = "{0}/data.json".format(root)
+            v = json.loads(open(file_path, 'r').read())
+            logger.debug("<<<<<<<<<------------------------------------------------------")
+            logger.debug(v)
+
+
+
+
+
 def convert_congress(congress):
     """
     Recurse the passed govtrack congress directory and convert it's contents
@@ -434,6 +453,7 @@ def convert_congress(congress):
 
     bills = process_bills(congress)
     amendments = process_amendments(congress)
+    votes = process_votes(congress)
 
     try:
 
@@ -466,12 +486,15 @@ def convert_congress(congress):
             'bill_id', 'acted_at', 'how', 'result', 'roll', 'status', 'suspension', 'text',
             'type', 'vote_type', 'where', 'calander', 'number', 'under', 'committee', 'committees']
 
-        congress_obj.amendments = pd.DataFrame(amendments)
-        congress_obj.amendments.columns = [
-            'amendment_id', 'amendment_type', 'amends_amendment', 'amends_bill',
-            'amends_treaty', 'chamber', 'congress', 'description', 'introduced',
-            'number', 'proposed', 'purpose', 'sponsor_id', 'committee_id',
-            'sponsor_type', 'status', 'updated']
+
+        # Amendment data is not avalible for all congresses
+        if amendments:
+            congress_obj.amendments = pd.DataFrame(amendments)
+            congress_obj.amendments.columns = [
+                'amendment_id', 'amendment_type', 'amends_amendment', 'amends_bill',
+                'amends_treaty', 'chamber', 'congress', 'description', 'introduced',
+                'number', 'proposed', 'purpose', 'sponsor_id', 'committee_id',
+                'sponsor_type', 'status', 'updated']
 
         save_congress(congress_obj, congress['dest'])
     except Exception as e:
