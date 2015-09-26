@@ -38,7 +38,7 @@ def int_or_zero(string):
         return 0
 
 if __name__ == '__main__':
-    logger = setup_logger(logging.DEBUG)
+    logger = setup_logger(logging.ERROR)
 
     parser = argparse.ArgumentParser(description="Convert GovTrak Data to CSVs")
     parser.add_argument("source",
