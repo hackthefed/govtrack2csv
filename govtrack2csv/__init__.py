@@ -142,6 +142,7 @@ def save_congress(congress, dest):
         congress.committees.to_csv("{0}/committees_map.csv".format(congress_dir), encoding='utf-8')
         congress.subjects.to_csv("{0}/subjects_map.csv".format(congress_dir), encoding='utf-8')
         congress.votes.to_csv("{0}/votes.csv".format(congress_dir), encoding='utf-8')
+        congress.votes_people.to_csv("{0}/votes_people.csv".format(congress_dir), encoding='utf-8')
         if hasattr(congress, 'amendments'):
             congress.amendments.to_csv("{0}/amendments.csv".format(congress_dir), encoding='utf-8')
     except Exception:
@@ -292,7 +293,7 @@ def extract_events(bill):
     going to kepe it simple. Introduction, cosponsor, votes dates
     """
     events = []
-    logger.debug(events)
+    #logger.debug(events)
 
     bill_id = bill.get('bill_id', None)
     if bill_id:
@@ -315,7 +316,7 @@ def extract_events(bill):
             e.append(event.get('committee', None))
             e.append(event.get('committees', []))
             events.append(e)
-    logger.debug(events)
+    #logger.debug(events)
 
     return events
 
@@ -422,7 +423,7 @@ def process_votes(congress):
     logger.error("==================================================================")
 
     votes = {}
-    votes_data = []
+    vote_data = []
     vote_person = []
 
     for root, dirs, files in os.walk(vote_dir):
@@ -432,49 +433,84 @@ def process_votes(congress):
             v = json.loads(open(file_path, 'r').read())
             logger.info("<<<<<<<<<------------------------------------------------------")
             logger.info(file_path)
-            vote = {}
+            vote = []
 
             if v.get('bill', None):
                 bill_id = "{type}{number}-{congress}".format(**v['bill'])
             else:
                 bill_id = None
 
-            yes_vote = 'Yea' if v['chamber'] == 's' else 'Aye'
-            no_vote = 'Nay' if v['chamber'] == 's' else 'No'
+            yes_vote = 'Yea' if 'Yea' in v['votes'].keys() else 'Aye'
+            no_vote = 'Nay' if 'Nay' in v['votes'].keys() else 'No'
 
+            stupid_tally_map = {
+                'Yea': 'y',
+                'Aye': 'y',
+                'Nay': 'n',
+                'No': 'n',
+                'Not Voting': 'nv',
+                'Present': 'p'
+            }
 
-
-            vote['amendment_id'] = str(v.get('amendment', None))
-            vote['bill_id'] = bill_id
-            vote['category'] = v['category']
-            vote['chamber'] = v['chamber']
-            vote['date'] = v['date']
-            vote['number'] = v['number']
-            vote['requires'] = v['requires']
-            vote['result'] = v['result']
-            vote['result_text'] = v.get('result_text', None)
-            vote['session'] = v['session']
-            vote['type'] = v['type']
-            vote['updated_at'] = v['updated_at']
-            vote['vote_id'] = v['vote_id']
+            vote.append(str(v.get('amendment', None)))
+            vote.append(bill_id)
+            vote.append(v['category'])
+            vote.append(v['chamber'])
+            vote.append(v['date'])
+            vote.append(v['number'])
+            vote.append(v['requires'])
+            vote.append(v['result'])
+            vote.append(v.get('result_text', None))
+            vote.append(v['session'])
+            vote.append(v['type'])
+            vote.append(v['updated_at'])
+            vote.append(v['vote_id'])
             try:
-                vote['yes'] = len(v['votes'][yes_vote])
-                vote['no'] = len(v['votes'][no_vote])
-                vote['not_voting'] = len(v['votes']['Not Voting'])
-                vote['present'] = len(v['votes']['Present'])
+                up_down_set = {'bill', 'amendment', 'passage', 'cloture',
+                                'procedural', 'passage-suspension', 'nomination'
+                                'recommit'}
+
+                if v['category'] in up_down_set:
+                    vote.append(len(v['votes'][yes_vote]))
+                    vote.append(len(v['votes'][no_vote]))
+                    vote.append(len(v['votes']['Not Voting']))
+                    vote.append(len(v['votes']['Present']))
+                else:
+                    vote.append(0)
+                    vote.append(0)
+                    vote.append(0)
+                    vote.append(0)
+
             except:
+                e = sys.exc_info()[0]
+                logger.error(yes_vote)
+                logger.error(no_vote)
                 logger.error(v['chamber'])
                 logger.error(v['votes'].keys())
+                logger.error(v['category'])
+                raise e
 
-            vote_values = []
-            for k,v in vote.items():
-                vote_values.append(v)
+            vote_data.append(vote)
+            if v['category'] in up_down_set:
+                for k, tallies in v['votes'].items():
+                    for tally in tallies:
+                        try:
+                            logger.debug('got to append')
+                            vote_person.append([stupid_tally_map[k], v['vote_id'],
+                                                tally['id'], tally['party'],
+                                                tally['state'], v['date']])
+                        except Exception as e:
+                            logger.error(e)
+                            logger.error(v['category'])
+                            logger.error(v['vote_id'])
+                            logger.error(k)
+                            logger.error(tally)
+                            raise e
 
-            vote_data.append(vote_values)
+    votes['votes'] = vote_data
+    votes['people'] = vote_person
 
     return votes
-
-
 
 
 
@@ -540,13 +576,18 @@ def convert_congress(congress):
                 'number', 'proposed', 'purpose', 'sponsor_id', 'committee_id',
                 'sponsor_type', 'status', 'updated']
 
-        congress_obj.votes = pd.DataFrame(votes)
+        congress_obj.votes = pd.DataFrame(votes['votes'])
         congress_obj.votes.columns = ['amendment_id', 'bill_id', 'category',
                 'chamber', 'date', 'number', 'requires', 'result',
                 'result_text', 'session', 'type', 'updated_at', 'vote_id', 'yes', 'no',
                 'not_voting', 'present']
 
+        congress_obj.votes_people = pd.DataFrame(votes['people'])
+        congress_obj.votes_people.columns = ['vote', 'vote_id', 'thomas_id',
+                'party', 'state', 'date']
+
         save_congress(congress_obj, congress['dest'])
+
     except Exception as e:
         logger.debug("################### ERRROR SAVING ########################")
         # print "{0} - {1}".format(congress, len(legislation))
