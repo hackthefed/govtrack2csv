@@ -146,7 +146,7 @@ def save_congress(congress, dest):
         if hasattr(congress, 'amendments'):
             congress.amendments.to_csv("{0}/amendments.csv".format(congress_dir), encoding='utf-8')
     except Exception:
-        logger.info("############################################shoot me")
+        logger.error("############################################shoot me")
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         logger.error(exc_type, fname, exc_tb.tb_lineno)
@@ -212,7 +212,7 @@ def extract_sponsor(bill):
         sponsor_map.append(sponsor.get('district'))
         sponsor_map.append(sponsor.get('state'))
     logger.debug("END Extracting Sponsor")
-    return sponsor_map
+    return sponsor_map if sponsor_map else None
 
 
 def extract_cosponsors(bill):
@@ -326,10 +326,8 @@ def process_bills(congress):
 
     data = defaultdict(list)
 
-    logger.info(congress)
-
     bills = "{0}/{1}/bills".format(congress['src'], congress['congress'])
-    logger.info("About to walk {0}".format(bills))
+    logger.info("Processing Bills for {0}".format(congress['congress']))
 
     for root, dirs, files in os.walk(bills):
         if "data.json" in files and "text-versions" not in root:
@@ -372,7 +370,7 @@ def process_amendments(congress):
     Traverse amendments for a project
     """
     amend_dir = "{0}/{1}/amendments".format(congress['src'], congress['congress'])
-    logger.info("About to walk {0}".format(amend_dir))
+    logger.info("Processing Amendments for {0}".format(congress['congress']))
 
     amendments = []
 
@@ -412,106 +410,108 @@ def process_amendments(congress):
 
             amendments.append(amendment)
 
-    return amendments
+    return amendments if amendments else [[None] * 17]
 
 
 def process_votes(congress):
-    logger.error("==================================================================")
     vote_dir = "{0}/{1}/votes".format(congress['src'], congress['congress'])
-    logger.error("==================================================================")
-    logger.info("About to walk {0}".format(vote_dir))
-    logger.error("==================================================================")
+    logger.info("Processing Votes for {0}".format(congress['congress']))
 
     votes = {}
     vote_data = []
     vote_person = []
+    up_down_set = {'bill', 'amendment', 'passage', 'cloture', 'procedural',
+                    'passage-suspension', 'nomination' 'recommit'}
 
     for root, dirs, files in os.walk(vote_dir):
         if "data.json" in files:
-            logger.debug('<<<<<<<<<<<<<<<<<<<<<<=======================================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
             file_path = "{0}/data.json".format(root)
             v = json.loads(open(file_path, 'r').read())
-            logger.info("<<<<<<<<<------------------------------------------------------")
-            logger.info(file_path)
             vote = []
 
-            if v.get('bill', None):
-                bill_id = "{type}{number}-{congress}".format(**v['bill'])
-            else:
-                bill_id = None
-
-            yes_vote = 'Yea' if 'Yea' in v['votes'].keys() else 'Aye'
-            no_vote = 'Nay' if 'Nay' in v['votes'].keys() else 'No'
-
-            stupid_tally_map = {
-                'Yea': 'y',
-                'Aye': 'y',
-                'Nay': 'n',
-                'No': 'n',
-                'Not Voting': 'nv',
-                'Present': 'p'
-            }
-
-            vote.append(str(v.get('amendment', None)))
-            vote.append(bill_id)
-            vote.append(v['category'])
-            vote.append(v['chamber'])
-            vote.append(v['date'])
-            vote.append(v['number'])
-            vote.append(v['requires'])
-            vote.append(v['result'])
-            vote.append(v.get('result_text', None))
-            vote.append(v['session'])
-            vote.append(v['type'])
-            vote.append(v['updated_at'])
-            vote.append(v['vote_id'])
-            try:
-                up_down_set = {'bill', 'amendment', 'passage', 'cloture',
-                                'procedural', 'passage-suspension', 'nomination'
-                                'recommit'}
-
-                if v['category'] in up_down_set:
-                    vote.append(len(v['votes'][yes_vote]))
-                    vote.append(len(v['votes'][no_vote]))
-                    vote.append(len(v['votes']['Not Voting']))
-                    vote.append(len(v['votes']['Present']))
-                else:
-                    vote.append(0)
-                    vote.append(0)
-                    vote.append(0)
-                    vote.append(0)
-
-            except:
-                e = sys.exc_info()[0]
-                logger.error(yes_vote)
-                logger.error(no_vote)
-                logger.error(v['chamber'])
-                logger.error(v['votes'].keys())
-                logger.error(v['category'])
-                raise e
-
-            vote_data.append(vote)
             if v['category'] in up_down_set:
+
+                if v.get('bill', None):
+                    bill_id = "{type}{number}-{congress}".format(**v['bill'])
+                else:
+                    bill_id = None
+
+                yes_vote = 'Yea' if 'Yea' in v['votes'].keys() else 'Aye'
+                no_vote = 'Nay' if 'Nay' in v['votes'].keys() else 'No'
+
+                stupid_tally_map = {
+                    'Yea': 'y',
+                    'Aye': 'y',
+                    'Nay': 'n',
+                    'No': 'n',
+                    'Not Voting': 'nv',
+                    'Present': 'p'
+                }
+
+                vote.append(str(v.get('amendment', None)))
+                vote.append(bill_id)
+                vote.append(v['category'])
+                vote.append(v['chamber'])
+                vote.append(v['date'])
+                vote.append(v['number'])
+                vote.append(v['requires'])
+                vote.append(v['result'])
+                vote.append(v.get('result_text', None))
+                vote.append(v['session'])
+                vote.append(v['type'])
+                vote.append(v['updated_at'])
+                vote.append(v['vote_id'])
+                try:
+
+                    if v['category'] in up_down_set:
+                        vote.append(len(v['votes'][yes_vote]))
+                        vote.append(len(v['votes'][no_vote]))
+                        vote.append(len(v['votes']['Not Voting']))
+                        vote.append(len(v['votes']['Present']))
+                    else:
+                        vote.append(0)
+                        vote.append(0)
+                        vote.append(0)
+                        vote.append(0)
+
+                except KeyError as ke:
+                    logger.error("bad vote key:".format(ke))
+                except:
+                    e = sys.exc_info()[0]
+                    logger.error(yes_vote)
+                    logger.error(no_vote)
+                    logger.error(v['chamber'])
+                    logger.error(v['votes'].keys())
+                    logger.error(v['category'])
+                    raise e
+
+                vote_data.append(vote)
                 for k, tallies in v['votes'].items():
                     for tally in tallies:
                         try:
                             logger.debug('got to append')
-                            vote_person.append([stupid_tally_map[k], v['vote_id'],
-                                                tally['id'], tally['party'],
-                                                tally['state'], v['date']])
+                            # VP vote shows as string ignore for the time being
+                            if not isinstance(tally, str):
+                                vote_person.append([stupid_tally_map[k], v['vote_id'],
+                                                    tally['id'], tally['party'],
+                                                        tally['state'], v['date']])
+                        except KeyError as ke:
+                            logger.error("bad vote key:".format(ke))
                         except Exception as e:
                             logger.error(e)
                             logger.error(v['category'])
                             logger.error(v['vote_id'])
+                            logger.error("Tally {0}".format(tally))
+                            logger.error(type(tally))
                             logger.error(k)
                             logger.error(tally)
                             raise e
 
-    votes['votes'] = vote_data
-    votes['people'] = vote_person
+
+    votes['votes'] = vote_data if vote_data else [[None] * 17]
+    votes['people'] = vote_person if vote_person else [[None] * 6]
 
     return votes
-
 
 
 def convert_congress(congress):
@@ -521,7 +521,7 @@ def convert_congress(congress):
     :return dict: A Dictionary of DataFrames
     """
 
-    logger.info("Begin processing {0}".format(congress))
+    logger.info("Begin processing Congress {0}".format(congress['congress']))
 
     congress_obj = Congress(congress)
 
@@ -539,29 +539,42 @@ def convert_congress(congress):
 
         logger.debug(" ======================  SAVING {}".format(congress))
 
-        congress_obj.legislation = pd.DataFrame(bills['legislation'])
+        congress_obj.legislation = pd.DataFrame(
+            bills['legislation'] if bills['legislation'] else [[None] * 12])
         congress_obj.legislation.columns = [
             'congress', 'bill_id', 'bill_type', 'introduced_at', 'number',
             'official_title', 'popular_title', 'short_title', 'status',
             'status_at', 'top_subject', 'updated_at']
 
-        congress_obj.sponsors = pd.DataFrame(bills['sponsors'])
+        f = [s for s in bills['sponsors'] if s]
+        sponsors = f if f else [[None] * 5]
+        congress_obj.sponsors = pd.DataFrame(sponsors)
         congress_obj.sponsors.columns = [
             'type', 'thomas_id', 'bill_id', 'district', 'state']
 
-        congress_obj.cosponsors = pd.DataFrame(bills['cosponsors'])
+
+        c = [s for s in bills['cosponsors'] if len(s) > 0]
+        cosponsors = c if c else [[None] * 5]
+        congress_obj.cosponsors = pd.DataFrame(cosponsors)
         congress_obj.sponsors.columns = [
             'type', 'thomas_id', 'bill_id', 'district', 'state']
 
-        congress_obj.committees = pd.DataFrame(bills['committees'])
+        c = [s for s in bills['committees'] if len(s) > 0]
+        committees = c if c else [[None] * 4]
+        congress_obj.committees = pd.DataFrame(committees)
         congress_obj.committees.columns = [
             'type', 'name', 'committee_id', 'bill_id']
 
-        congress_obj.subjects = pd.DataFrame(bills['subjects'])
+        s = [s for s in bills['subjects'] if len(s) > 0]
+        subjects = s if s else [[None] * 3]
+        congress_obj.subjects = pd.DataFrame(subjects)
         congress_obj.subjects.columns = [
             'bill_id', 'bill_type', 'subject']
 
-        congress_obj.events = pd.DataFrame(bills['events'])
+
+        e = [s for s in bills['events'] if len(s) > 0]
+        events = e if e else [[None] * 16]
+        congress_obj.events = pd.DataFrame(events)
         congress_obj.events.columns = [
             'bill_id', 'acted_at', 'how', 'result', 'roll', 'status', 'suspension', 'text',
             'type', 'vote_type', 'where', 'calander', 'number', 'under', 'committee', 'committees']
@@ -590,10 +603,7 @@ def convert_congress(congress):
 
     except Exception as e:
         logger.debug("################### ERRROR SAVING ########################")
-        # print "{0} - {1}".format(congress, len(legislation))
+        logger.error("congress {0}".format(congress))
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        logger.error(e)
-        logger.error(exc_type)
-        logger.error(fname)
-        logger.error(exc_tb.tb_lineno)
+        raise e
