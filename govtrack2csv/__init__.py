@@ -25,20 +25,24 @@ from collections import defaultdict
 
 from govtrack2csv.util import datestring_to_datetime
 from govtrack2csv.model import Congress
+
 logger = multiprocessing.log_to_stderr()
 logger.setLevel(logging.DEBUG)
 
 
+LEGISLATOR_DIR = 'congress-legislators'
+CONGRESS_DIR = 'congress'
+
+
 def import_legislators(src):
     """
-    Read the legislators from the csv files into a single Dataframe. Intended for importing new data.
+    Read the legislators from the csv files into a single Dataframe. Intended
+    for importing new data.
     """
-    current = pd.DataFrame().from_csv("{0}/congress-legislators/legislators-current.csv".format(src))
-    historic = pd.DataFrame().from_csv("{0}/congress-legislators/legislators-historic.csv".format(src))
+    logger.info("Importing Legislators From: {0}".format(src))
+    current = pd.read_csv("{0}/{1}/legislators-current.csv".format(src, LEGISLATOR_DIR))
+    historic = pd.read_csv("{0}/{1}/legislators-historic.csv".format(src, LEGISLATOR_DIR))
     legislators = current.append(historic)
-
-    # more than one thing has a thomas_id so it's kinda usless in our model
-    legislators['legislator_id'] = legislators['thomas_id']
 
     return legislators
 
@@ -47,7 +51,16 @@ def save_legislators(legislators, destination):
     """
     Output legislators datafrom to csv.
     """
-    legislators.to_csv("{0}/csv/legislators.csv".format(destination), encoding='utf-8')
+    logger.info("Saving Legislators To: {0}".format(destination))
+    legislators.to_csv("{0}/legislators.csv".format(destination),
+                        encoding='utf-8')
+
+
+def move_legislators(src, dest):
+    logger.info("Moving Legislators")
+    legislators = import_legislators(src)
+    save_legislators(legislators, dest)
+    logger.info("Saved {0} Legislators".format(len(legislators)))
 
 
 #
@@ -61,19 +74,17 @@ def import_committees(src):
     committees = []
     subcommittees = []
 
-    with open("{0}/congress-legislators/committees-current.yaml".format(src), 'r') as stream:
+    with open("{0}/{1}/committees-current.yaml".format(src, LEGISLATOR_DIR), 'r') as stream:
         committees += yaml.load(stream)
 
-    with open("{0}/congress-legislators/committees-current.yaml".format(src), 'r') as stream:
+    with open("{0}/{1}/committees-historical.yaml".format(src, LEGISLATOR_DIR), 'r') as stream:
         committees += yaml.load(stream)
 
     # Sub Committees are not Committees
     # And unfortunately the good folk at thomas thought modeling data with duplicate id's was a good idea.
     # you can have two subcommittees with the ID 12. Makes a simple membership map impossible.
     for com in committees:
-
         com['committee_id'] = com['thomas_id']
-
         if 'subcommittees' in com:
             # process sub committees into separate DataFrame
             for subcom in com.get('subcommittees'):
@@ -93,14 +104,23 @@ def save_committees(committees, dest):
     """
     Output legislators datafrom to csv.
     """
-    committees.to_csv("{0}/csv/committees.csv".format(dest), encoding='utf-8')
+    committees.to_csv("{0}/committees.csv".format(dest), encoding='utf-8')
 
 
 def save_subcommittees(subcommittees, dest):
     """
     Output legislators datafrom to csv.
     """
-    subcommittees.to_csv("{0}/csv/subcommittees.csv".format(dest), encoding='utf-8')
+    subcommittees.to_csv("{0}/subcommittees.csv".format(dest), encoding='utf-8')
+
+
+def move_committees(src, dest):
+    """
+    Import stupid yaml files, convert to something useful.
+    """
+    comm, sub_comm = import_committees(src)
+    save_committees(comm, dest)
+    save_subcommittees(comm, dest)
 
 
 def make_congress_dir(congress, dest):
@@ -430,7 +450,6 @@ def process_votes(congress):
             vote = []
 
             if v['category'] in up_down_set:
-
                 if v.get('bill', None):
                     bill_id = "{type}{number}-{congress}".format(**v['bill'])
                 else:
@@ -475,7 +494,8 @@ def process_votes(congress):
                         vote.append(0)
 
                 except KeyError as ke:
-                    logger.error("bad vote key:".format(ke))
+                    logger.error("bad vote key:".format(v['vote_id']))
+                    logger.errro(ke)
                 except:
                     e = sys.exc_info()[0]
                     logger.error(yes_vote)
