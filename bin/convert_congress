@@ -22,6 +22,9 @@ import os
 
 from multiprocessing import Pool
 from govtrack2csv import convert_congress
+from govtrack2csv import move_legislators
+from govtrack2csv import move_committees
+from govtrack2csv import CONGRESS_DIR
 
 
 def setup_logger(level):
@@ -59,13 +62,16 @@ if __name__ == '__main__':
     logger.debug(args.source)
     logger.debug(args.destination)
 
-    dirs = [
-            {
-                "congress": c,
-                "src": args.source,
+    move_legislators(args.source, args.destination)
+    move_committees(args.source, args.destination)
+
+    congress_dir = "{0}/{1}".format(args.source, CONGRESS_DIR)
+
+    dirs = [{"congress": c,
+                "src": congress_dir,
                 "dest": args.destination}
-            for c in os.listdir(args.source)
-            if os.path.isdir(os.path.join(args.source, c))]
+            for c in os.listdir(congress_dir)
+            if os.path.isdir(os.path.join(congress_dir, c))]
     logger.debug(dirs)
 
     p = Pool(args.threads)
