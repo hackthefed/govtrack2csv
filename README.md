@@ -17,10 +17,10 @@ cd data_home
 mkdir congress_home
 cd congress_home
 rsync -avz --delete --delete-excluded --exclude **/text-versions/ --exclude **data.xml --exclude **pdf govtrack.us::govtrackdata/congress/114  ./congress/
-rsync -avz --delete  govtrack.us::govtrackdata/congress-legislators  ./congress-legislators
+rsync -avz --delete  govtrack.us::govtrackdata/congress-legislators  .
 cd ..
 mkdir csv
-convert_congress ./congress ./csv
+convert_congress ./congress_home ./csv
 ```
 
 
