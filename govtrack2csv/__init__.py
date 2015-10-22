@@ -616,7 +616,7 @@ def convert_congress(congress):
                 'not_voting', 'present']
 
         congress_obj.votes_people = pd.DataFrame(votes['people'])
-        congress_obj.votes_people.columns = ['vote', 'vote_id', 'thomas_id',
+        congress_obj.votes_people.columns = ['vote', 'vote_id', 'lis_id',
                 'party', 'state', 'date']
 
         save_congress(congress_obj, congress['dest'])
