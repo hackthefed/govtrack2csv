@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with govtrack2csv.  If not, see <http://www.gnu.org/licenses/>
 
+import csv
 import json
 import logging
 import multiprocessing
@@ -21,6 +22,7 @@ import os.path
 import pandas as pd
 import sys
 import yaml  # Ruby users should die.
+
 from collections import defaultdict
 
 from govtrack2csv.util import datestring_to_datetime
@@ -154,8 +156,8 @@ def save_congress(congress, dest):
         logger.debug(congress.name)
         logger.debug(dest)
         congress_dir = make_congress_dir(congress.name, dest)
-        logger.debug(congress_dir)
         congress.legislation.to_csv("{0}/legislation.csv".format(congress_dir), encoding='utf-8')
+        logger.debug(congress_dir)
         congress.sponsors.to_csv("{0}/sponsor_map.csv".format(congress_dir), encoding='utf-8')
         congress.cosponsors.to_csv("{0}/cosponsor_map.csv".format(congress_dir), encoding='utf-8')
         congress.events.to_csv("{0}/events.csv".format(congress_dir), encoding='utf-8')
@@ -433,7 +435,7 @@ def process_amendments(congress):
     return amendments if amendments else [[None] * 17]
 
 
-def process_votes(congress):
+def process_votes(congress, lis_to_bio):
     vote_dir = "{0}/{1}/votes".format(congress['src'], congress['congress'])
     logger.info("Processing Votes for {0}".format(congress['congress']))
 
@@ -480,8 +482,8 @@ def process_votes(congress):
                 vote.append(v['type'])
                 vote.append(v['updated_at'])
                 vote.append(v['vote_id'])
-                try:
 
+                try:
                     if v['category'] in up_down_set:
                         vote.append(len(v['votes'][yes_vote]))
                         vote.append(len(v['votes'][no_vote]))
@@ -494,7 +496,7 @@ def process_votes(congress):
                         vote.append(0)
 
                 except KeyError as ke:
-                    logger.error("bad vote key:".format(v['vote_id']))
+                    logger.error("bad vote key: {0}".format(v['vote_id']))
                     logger.errro(ke)
                 except:
                     e = sys.exc_info()[0]
@@ -511,12 +513,23 @@ def process_votes(congress):
                         try:
                             logger.debug('got to append')
                             # VP vote shows as string ignore for the time being
+
                             if not isinstance(tally, str):
+                                # looks like some senate votes are recorded using the lis_id
+                                # normalize to the bioguide_id
+                                if tally['id'] in lis_to_bio:
+                                    logger.debug("Replacing Tally ID {0} with {1}".format(tally['id'], lis_to_bio[tally['id']]))
+                                    tally['id'] = lis_to_bio[tally['id']]
+
+                                #if any(legislators.lis_id == tally['id']):
+                                #    tally['id'] = legislators[legislators.lis_id == tally['id']]['bioguide_id'].iloc[0]
                                 vote_person.append([stupid_tally_map[k], v['vote_id'],
                                                     tally['id'], tally['party'],
                                                         tally['state'], v['date']])
                         except KeyError as ke:
-                            logger.error("bad vote key:".format(ke))
+                            logger.error("bad vote key: {0}".format(ke))
+                            logger.error(tally['id'])
+                            logger.exception(ke)
                         except Exception as e:
                             logger.error(e)
                             logger.error(v['category'])
@@ -527,11 +540,27 @@ def process_votes(congress):
                             logger.error(tally)
                             raise e
 
-
     votes['votes'] = vote_data if vote_data else [[None] * 17]
     votes['people'] = vote_person if vote_person else [[None] * 6]
 
     return votes
+
+
+def lis_to_bio_map(folder):
+    """
+    Senators have a lis_id that is used in some places. That's dumb. Build a
+    dict from lis_id to bioguide_id which every member of congress has.
+    """
+    logger.info("Opening legislator csv for lis_dct creation")
+    lis_dic = {}
+    leg_path = "{0}/legislators.csv".format(folder)
+    logger.info(leg_path)
+    with open(leg_path, 'r') as csvfile:
+        leg_reader = csv.reader(csvfile)
+        for row in leg_reader:
+            if row[22]:
+                lis_dic[row[22]] = row[19]
+    return lis_dic
 
 
 def convert_congress(congress):
@@ -544,6 +573,7 @@ def convert_congress(congress):
     logger.info("Begin processing Congress {0}".format(congress['congress']))
 
     congress_obj = Congress(congress)
+    lis_to_bio = lis_to_bio_map(congress['dest'])
 
     logger.debug("made congress object")
     logger.debug(congress_obj)
@@ -553,7 +583,7 @@ def convert_congress(congress):
 
     bills = process_bills(congress)
     amendments = process_amendments(congress)
-    votes = process_votes(congress)
+    votes = process_votes(congress, lis_to_bio)
 
     try:
 
@@ -616,7 +646,7 @@ def convert_congress(congress):
                 'not_voting', 'present']
 
         congress_obj.votes_people = pd.DataFrame(votes['people'])
-        congress_obj.votes_people.columns = ['vote', 'vote_id', 'lis_id',
+        congress_obj.votes_people.columns = ['vote', 'vote_id', 'bioguide_id',
                 'party', 'state', 'date']
 
         save_congress(congress_obj, congress['dest'])
