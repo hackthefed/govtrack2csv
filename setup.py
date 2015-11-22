@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='govtrack2csv',
-      version='1.0-alpha1',
+      version='1.0-alpha2',
       description='Toolset for converting govtrack data to csv.',
       url='http://github.com/hackthefed/govtrack2csv',
       author='Hack The Fed',
