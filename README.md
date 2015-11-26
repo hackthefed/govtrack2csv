@@ -33,8 +33,8 @@ Pandas and it's requirements.
 For some reason people seem to have difficulty installing Pandas. Given there
 are packages for all linux's and it builds easily from brew on OS X, we really
 don't understand this. However if you are having difficulty, try our python-datakit
-docker image https://hub.docker.com/r/hackthefed/python-datakit. The image you
-contains all the tools required to work with all our data science projects
+docker image https://hub.docker.com/r/hackthefed/python-datakit. The image 
+contains all the tools required to work with all our data science projects.
 
 That is as much support as you can expect from us on this topic. We made the
 tools we use avaliable to you and we wish you luck.
