@@ -31,7 +31,6 @@ from govtrack2csv.model import Congress
 logger = multiprocessing.log_to_stderr()
 logger.setLevel(logging.DEBUG)
 
-
 LEGISLATOR_DIR = 'congress-legislators'
 CONGRESS_DIR = 'congress'
 
@@ -42,8 +41,10 @@ def import_legislators(src):
     for importing new data.
     """
     logger.info("Importing Legislators From: {0}".format(src))
-    current = pd.read_csv("{0}/{1}/legislators-current.csv".format(src, LEGISLATOR_DIR))
-    historic = pd.read_csv("{0}/{1}/legislators-historic.csv".format(src, LEGISLATOR_DIR))
+    current = pd.read_csv("{0}/{1}/legislators-current.csv".format(
+        src, LEGISLATOR_DIR))
+    historic = pd.read_csv("{0}/{1}/legislators-historic.csv".format(
+        src, LEGISLATOR_DIR))
     legislators = current.append(historic)
 
     return legislators
@@ -55,7 +56,7 @@ def save_legislators(legislators, destination):
     """
     logger.info("Saving Legislators To: {0}".format(destination))
     legislators.to_csv("{0}/legislators.csv".format(destination),
-                        encoding='utf-8')
+                       encoding='utf-8')
 
 
 def move_legislators(src, dest):
@@ -64,10 +65,10 @@ def move_legislators(src, dest):
     save_legislators(legislators, dest)
     logger.info("Saved {0} Legislators".format(len(legislators)))
 
-
 #
 # Committee Functions
 #
+
 
 def import_committees(src):
     """
@@ -76,10 +77,12 @@ def import_committees(src):
     committees = []
     subcommittees = []
 
-    with open("{0}/{1}/committees-current.yaml".format(src, LEGISLATOR_DIR), 'r') as stream:
+    with open("{0}/{1}/committees-current.yaml".format(src, LEGISLATOR_DIR),
+              'r') as stream:
         committees += yaml.load(stream)
 
-    with open("{0}/{1}/committees-historical.yaml".format(src, LEGISLATOR_DIR), 'r') as stream:
+    with open("{0}/{1}/committees-historical.yaml".format(src, LEGISLATOR_DIR),
+              'r') as stream:
         committees += yaml.load(stream)
 
     # Sub Committees are not Committees
@@ -90,8 +93,11 @@ def import_committees(src):
         if 'subcommittees' in com:
             # process sub committees into separate DataFrame
             for subcom in com.get('subcommittees'):
-                subcom['committee_id'] = com['thomas_id']  # we use committee_id so we can easily merge dataframes
-                subcom['subcommittee_id'] = "{0}-{1}".format(subcom['committee_id'], subcom['thomas_id'])
+                subcom['committee_id'] = com[
+                    'thomas_id'
+                ]  # we use committee_id so we can easily merge dataframes
+                subcom['subcommittee_id'] = "{0}-{1}".format(
+                    subcom['committee_id'], subcom['thomas_id'])
                 subcommittees.append(subcom)
 
             del com['subcommittees']
@@ -113,7 +119,8 @@ def save_subcommittees(subcommittees, dest):
     """
     Output legislators datafrom to csv.
     """
-    subcommittees.to_csv("{0}/subcommittees.csv".format(dest), encoding='utf-8')
+    subcommittees.to_csv("{0}/subcommittees.csv".format(dest),
+                         encoding='utf-8')
 
 
 def move_committees(src, dest):
@@ -142,7 +149,8 @@ def make_congress_dir(congress, dest):
 def load_subjects(congresses):
     temp_array = []
     for con in congresses:
-        t_con = pd.DataFrame().from_csv("data/csv/{0}/legislation.csv".format(con))
+        t_con = pd.DataFrame().from_csv("data/csv/{0}/legislation.csv".format(
+            con))
         temp_array.append(t_con)
     return pd.concat(temp_array)
 
@@ -156,17 +164,30 @@ def save_congress(congress, dest):
         logger.debug(congress.name)
         logger.debug(dest)
         congress_dir = make_congress_dir(congress.name, dest)
-        congress.legislation.to_csv("{0}/legislation.csv".format(congress_dir), encoding='utf-8')
+        congress.legislation.to_csv("{0}/legislation.csv".format(congress_dir),
+                                    encoding='utf-8')
         logger.debug(congress_dir)
-        congress.sponsors.to_csv("{0}/sponsor_map.csv".format(congress_dir), encoding='utf-8')
-        congress.cosponsors.to_csv("{0}/cosponsor_map.csv".format(congress_dir), encoding='utf-8')
-        congress.events.to_csv("{0}/events.csv".format(congress_dir), encoding='utf-8')
-        congress.committees.to_csv("{0}/committees_map.csv".format(congress_dir), encoding='utf-8')
-        congress.subjects.to_csv("{0}/subjects_map.csv".format(congress_dir), encoding='utf-8')
-        congress.votes.to_csv("{0}/votes.csv".format(congress_dir), encoding='utf-8')
-        congress.votes_people.to_csv("{0}/votes_people.csv".format(congress_dir), encoding='utf-8')
+        congress.sponsors.to_csv("{0}/sponsor_map.csv".format(congress_dir),
+                                 encoding='utf-8')
+        congress.cosponsors.to_csv(
+            "{0}/cosponsor_map.csv".format(congress_dir),
+            encoding='utf-8')
+        congress.events.to_csv("{0}/events.csv".format(congress_dir),
+                               encoding='utf-8')
+        congress.committees.to_csv(
+            "{0}/committees_map.csv".format(congress_dir),
+            encoding='utf-8')
+        congress.subjects.to_csv("{0}/subjects_map.csv".format(congress_dir),
+                                 encoding='utf-8')
+        congress.votes.to_csv("{0}/votes.csv".format(congress_dir),
+                              encoding='utf-8')
+        congress.votes_people.to_csv(
+            "{0}/votes_people.csv".format(congress_dir),
+            encoding='utf-8')
         if hasattr(congress, 'amendments'):
-            congress.amendments.to_csv("{0}/amendments.csv".format(congress_dir), encoding='utf-8')
+            congress.amendments.to_csv(
+                "{0}/amendments.csv".format(congress_dir),
+                encoding='utf-8')
     except Exception:
         logger.error("############################################shoot me")
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -175,7 +196,9 @@ def save_congress(congress, dest):
 
 
 def import_committee_membership(src):
-    with open("{0}/congress-legislators/committee-membership-current.yaml".format(src), 'r') as stream:
+    with open(
+            "{0}/congress-legislators/committee-membership-current.yaml".format(
+                src), 'r') as stream:
         c_membership = yaml.load(stream)
 
     members = []
@@ -186,8 +209,8 @@ def import_committee_membership(src):
             member['title'] = member.get('title', 'Member')
             member['party_position'] = member['party']
             member['legislator_id'] = int(member['thomas'])
-            del(member['party'])
-            del(member['thomas'])
+            del (member['party'])
+            del (member['thomas'])
             members.append(member)
 
     return pd.DataFrame(members)
@@ -295,7 +318,8 @@ def extract_committees(bill):
             logger.debug("is subcommittee")
             c_list.append('subcommittee')  # type
             c_list.append(c.get('subcommittee'))
-            sub_id = "{0}-{1}".format(c.get('committee_id'), c.get('subcommittee_id'))
+            sub_id = "{0}-{1}".format(
+                c.get('committee_id'), c.get('subcommittee_id'))
             logger.debug("Processing subcommittee {0}".format(sub_id))
             c_list.append(sub_id)
         else:
@@ -391,7 +415,8 @@ def process_amendments(congress):
     """
     Traverse amendments for a project
     """
-    amend_dir = "{0}/{1}/amendments".format(congress['src'], congress['congress'])
+    amend_dir = "{0}/{1}/amendments".format(congress['src'],
+                                            congress['congress'])
     logger.info("Processing Amendments for {0}".format(congress['congress']))
 
     amendments = []
@@ -406,7 +431,8 @@ def process_amendments(congress):
             amendment.append(a['amendment_id'])
             amendment.append(a['amendment_type'])
             if a['amends_amendment']:
-                amendment.append(a['amends_amendment'].get('amendment_id', None))
+                amendment.append(a['amends_amendment'].get('amendment_id',
+                                                           None))
             else:
                 amendment.append(None)
             if a['amends_bill']:
@@ -443,7 +469,8 @@ def process_votes(congress, lis_to_bio):
     vote_data = []
     vote_person = []
     up_down_set = {'bill', 'amendment', 'passage', 'cloture', 'procedural',
-                    'passage-suspension', 'nomination' 'recommit'}
+                   'passage-suspension', 'nomination'
+                   'recommit'}
 
     for root, dirs, files in os.walk(vote_dir):
         if "data.json" in files:
@@ -472,6 +499,7 @@ def process_votes(congress, lis_to_bio):
                 vote.append(str(v.get('amendment', None)))
                 vote.append(bill_id)
                 vote.append(v['category'])
+                vote.append(v['congress'])
                 vote.append(v['chamber'])
                 vote.append(v['date'])
                 vote.append(v['number'])
@@ -518,14 +546,17 @@ def process_votes(congress, lis_to_bio):
                                 # looks like some senate votes are recorded using the lis_id
                                 # normalize to the bioguide_id
                                 if tally['id'] in lis_to_bio:
-                                    logger.debug("Replacing Tally ID {0} with {1}".format(tally['id'], lis_to_bio[tally['id']]))
+                                    logger.debug(
+                                        "Replacing Tally ID {0} with {1}".format(
+                                            tally['id'], lis_to_bio[tally[
+                                                'id']]))
                                     tally['id'] = lis_to_bio[tally['id']]
 
                                 #if any(legislators.lis_id == tally['id']):
                                 #    tally['id'] = legislators[legislators.lis_id == tally['id']]['bioguide_id'].iloc[0]
-                                vote_person.append([stupid_tally_map[k], v['vote_id'],
-                                                    tally['id'], tally['party'],
-                                                        tally['state'], v['date']])
+                                vote_person.append([stupid_tally_map[k], v[
+                                    'vote_id'], tally['id'], tally['party'],
+                                                    tally['state'], v['date']])
                         except KeyError as ke:
                             logger.error("bad vote key: {0}".format(ke))
                             logger.error(tally['id'])
@@ -540,7 +571,7 @@ def process_votes(congress, lis_to_bio):
                             logger.error(tally)
                             raise e
 
-    votes['votes'] = vote_data if vote_data else [[None] * 17]
+    votes['votes'] = vote_data if vote_data else [[None] * 18]
     votes['people'] = vote_person if vote_person else [[None] * 6]
 
     return votes
@@ -589,70 +620,77 @@ def convert_congress(congress):
 
         logger.debug(" ======================  SAVING {}".format(congress))
 
-        congress_obj.legislation = pd.DataFrame(
-            bills['legislation'] if bills['legislation'] else [[None] * 12])
+        congress_obj.legislation = pd.DataFrame(bills['legislation'] if bills[
+            'legislation'] else [[None] * 12])
         congress_obj.legislation.columns = [
             'congress', 'bill_id', 'bill_type', 'introduced_at', 'number',
             'official_title', 'popular_title', 'short_title', 'status',
-            'status_at', 'top_subject', 'updated_at']
+            'status_at', 'top_subject', 'updated_at'
+        ]
 
         f = [s for s in bills['sponsors'] if s]
         sponsors = f if f else [[None] * 5]
         congress_obj.sponsors = pd.DataFrame(sponsors)
         congress_obj.sponsors.columns = [
-            'type', 'thomas_id', 'bill_id', 'district', 'state']
-
+            'type', 'thomas_id', 'bill_id', 'district', 'state'
+        ]
 
         c = [s for s in bills['cosponsors'] if len(s) > 0]
         cosponsors = c if c else [[None] * 5]
         congress_obj.cosponsors = pd.DataFrame(cosponsors)
         congress_obj.sponsors.columns = [
-            'type', 'thomas_id', 'bill_id', 'district', 'state']
+            'type', 'thomas_id', 'bill_id', 'district', 'state'
+        ]
 
         c = [s for s in bills['committees'] if len(s) > 0]
         committees = c if c else [[None] * 4]
         congress_obj.committees = pd.DataFrame(committees)
         congress_obj.committees.columns = [
-            'type', 'name', 'committee_id', 'bill_id']
+            'type', 'name', 'committee_id', 'bill_id'
+        ]
 
         s = [s for s in bills['subjects'] if len(s) > 0]
         subjects = s if s else [[None] * 3]
         congress_obj.subjects = pd.DataFrame(subjects)
-        congress_obj.subjects.columns = [
-            'bill_id', 'bill_type', 'subject']
-
+        congress_obj.subjects.columns = ['bill_id', 'bill_type', 'subject']
 
         e = [s for s in bills['events'] if len(s) > 0]
         events = e if e else [[None] * 16]
         congress_obj.events = pd.DataFrame(events)
         congress_obj.events.columns = [
-            'bill_id', 'acted_at', 'how', 'result', 'roll', 'status', 'suspension', 'text',
-            'type', 'vote_type', 'where', 'calander', 'number', 'under', 'committee', 'committees']
-
+            'bill_id', 'acted_at', 'how', 'result', 'roll', 'status',
+            'suspension', 'text', 'type', 'vote_type', 'where', 'calander',
+            'number', 'under', 'committee', 'committees'
+        ]
 
         # Amendment data is not avalible for all congresses
         if amendments:
             congress_obj.amendments = pd.DataFrame(amendments)
             congress_obj.amendments.columns = [
-                'amendment_id', 'amendment_type', 'amends_amendment', 'amends_bill',
-                'amends_treaty', 'chamber', 'congress', 'description', 'introduced',
-                'number', 'proposed', 'purpose', 'sponsor_id', 'committee_id',
-                'sponsor_type', 'status', 'updated']
+                'amendment_id', 'amendment_type', 'amends_amendment',
+                'amends_bill', 'amends_treaty', 'chamber', 'congress',
+                'description', 'introduced', 'number', 'proposed', 'purpose',
+                'sponsor_id', 'committee_id', 'sponsor_type', 'status',
+                'updated'
+            ]
 
         congress_obj.votes = pd.DataFrame(votes['votes'])
         congress_obj.votes.columns = ['amendment_id', 'bill_id', 'category',
-                'chamber', 'date', 'number', 'requires', 'result',
-                'result_text', 'session', 'type', 'updated_at', 'vote_id', 'yes', 'no',
-                'not_voting', 'present']
+                                      'congress', 'chamber', 'date', 'number',
+                                      'requires', 'result', 'result_text',
+                                      'session', 'type', 'updated_at',
+                                      'vote_id', 'yes', 'no', 'not_voting',
+                                      'present']
 
         congress_obj.votes_people = pd.DataFrame(votes['people'])
         congress_obj.votes_people.columns = ['vote', 'vote_id', 'bioguide_id',
-                'party', 'state', 'date']
+                                             'party', 'state', 'date']
 
         save_congress(congress_obj, congress['dest'])
 
     except Exception as e:
-        logger.debug("################### ERRROR SAVING ########################")
+        logger.error(
+            "################### ERRROR SAVING ########################")
         logger.error("congress {0}".format(congress))
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
